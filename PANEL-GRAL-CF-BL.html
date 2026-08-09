@@ -150,11 +150,11 @@ html, body { height: 100%; font-family: 'Barlow', sans-serif; background: var(--
 
 /* ── TOPBAR ── */
 #topbar {
-  height: var(--header-h);
+  min-height: var(--header-h);   /* antes: height. Crece si filtros/KPIs wrappean en pantallas chicas */
   background: var(--gris-card);
   border-bottom: 1px solid var(--gris-border);
   display: flex; align-items: center;
-  padding: 0 20px;
+  padding: 6px 20px;             /* padding vertical para que respire cuando crece */
   gap: 12px;
   flex-shrink: 0;
   box-shadow: 0 1px 4px rgba(0,0,0,.06);
@@ -180,7 +180,8 @@ html, body { height: 100%; font-family: 'Barlow', sans-serif; background: var(--
   border: 1px solid var(--gris-border);
   border-radius: 6px;
   overflow: hidden;
-  min-width: 96px;
+  min-width: max-content;        /* pill se adapta a etiquetas largas */
+  flex-shrink: 0;                /* que no la comprima el flex */
   box-shadow: var(--shadow);
 }
 .kpi-pill .kpi-label {
@@ -188,6 +189,7 @@ html, body { height: 100%; font-family: 'Barlow', sans-serif; background: var(--
   text-transform: uppercase; color: #fff; line-height: 1;
   background: var(--amarillo);
   padding: 5px 12px;
+  white-space: nowrap;           /* evita que etiquetas largas se rompan */
 }
 .kpi-pill .kpi-value {
   font-family: 'Barlow Semi Condensed', sans-serif;
@@ -206,13 +208,39 @@ html, body { height: 100%; font-family: 'Barlow', sans-serif; background: var(--
   font-variant-numeric: tabular-nums;
 }
 
+/* Contenedor implícito de las pills KPI directamente en el topbar.
+   Como en este panel las pills son hijas directas del #topbar (no hay un
+   .topbar-kpis wrapper), aplicamos el flex proporcional a un contenedor
+   virtual con el wrapper .topbar-kpis-wrap que agregamos en el HTML.
+   Ver más abajo. */
+
+/* Contenedor de las KPI pills — se agregó como wrapper.
+   Toma la proporción del mapa (1.1fr). Si no entran, wrappean con row-gap. */
+.topbar-kpis {
+  display: flex; gap: 8px;
+  flex-wrap: wrap;
+  row-gap: 6px;
+  min-width: 0;
+  flex: 1.1 1 0;
+}
+
 .topbar-divider { width: 1px; height: 32px; background: var(--gris-border); margin: 0 4px; }
 
-.topbar-spacer { flex: 1; }
+/* Ya no se usa: reemplazado por el flex proporcional. Se deja neutralizado
+   para no tener que tocar el HTML. */
+.topbar-spacer { display: none; }
 
 /* Filtros */
 .filter-group {
   display: flex; align-items: center; gap: 8px;
+  /* Toma la misma proporción que la tabla en el grid de abajo (0.9fr):
+     si no entran, wrappean dentro de esta zona hacia la derecha en vez
+     de invadir la zona de los KPIs. */
+  flex: 0.9 1 0;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  row-gap: 6px;
 }
 .filter-item {
   display: flex; flex-direction: column;
@@ -542,6 +570,10 @@ html, body { height: 100%; font-family: 'Barlow', sans-serif; background: var(--
         <span class="nav-icon">📊</span>
         <span class="nav-label">Evolución Temporal</span>
       </div>
+      <div class="nav-item" data-page="2" data-color="2" onclick="switchPage(2)">
+        <span class="nav-icon">🪣</span>
+        <span class="nav-label">Contenedores</span>
+      </div>
 
       <div id="extra-pages-nav"></div>
 
@@ -570,21 +602,25 @@ html, body { height: 100%; font-family: 'Barlow', sans-serif; background: var(--
 
       <div class="topbar-divider"></div>
 
-      <div class="kpi-pill">
-        <span class="kpi-label">Total Viviendas</span>
-        <span class="kpi-value" id="kpi-total">—</span>
-      </div>
-      <div class="kpi-pill naranja">
-        <span class="kpi-label">Barrios</span>
-        <span class="kpi-value" id="kpi-barrios">—</span>
-      </div>
-      <div class="kpi-pill verde">
-        <span class="kpi-label">Manzanas</span>
-        <span class="kpi-value" id="kpi-manzanas">—</span>
-      </div>
-      <div class="kpi-pill periodo">
-        <span class="kpi-label">Período</span>
-        <span class="kpi-fechas" id="kpi-periodo">—</span>
+      <!-- Contenedor de KPIs con flex proporcional al ancho del mapa (1.1fr).
+           Si las pills no entran, wrappean adentro con row-gap. -->
+      <div class="topbar-kpis">
+        <div class="kpi-pill">
+          <span class="kpi-label">Total Viviendas</span>
+          <span class="kpi-value" id="kpi-total">—</span>
+        </div>
+        <div class="kpi-pill naranja">
+          <span class="kpi-label">Barrios</span>
+          <span class="kpi-value" id="kpi-barrios">—</span>
+        </div>
+        <div class="kpi-pill verde">
+          <span class="kpi-label">Manzanas</span>
+          <span class="kpi-value" id="kpi-manzanas">—</span>
+        </div>
+        <div class="kpi-pill periodo">
+          <span class="kpi-label">Período</span>
+          <span class="kpi-fechas" id="kpi-periodo">—</span>
+        </div>
       </div>
 
       <div class="topbar-divider"></div>
@@ -682,13 +718,62 @@ html, body { height: 100%; font-family: 'Barlow', sans-serif; background: var(--
       <div class="page" id="page-1">
         <div style="display: flex; flex-direction: column; gap: 14px; height: calc(100% - 14px);">
 
+          <!-- Gráfico 1: barras semanal (viviendas por SE, ordenado por col BG asc) -->
           <div class="card" style="flex: 1; max-height: 460px;">
             <div class="card-header">
-              <h3>📈 Casos por Semana Epidemiológica</h3>
-              <span class="card-badge" id="chart-badge">—</span>
+              <h3>📈 Viviendas por Semana Epidemiológica</h3>
+              <span class="card-badge" id="chart-semanal-badge">—</span>
             </div>
             <div class="card-body">
-              <div class="chart-wrap" id="chart-container">
+              <div class="chart-wrap" id="chart-semanal-container">
+                <div class="loading-state"><div class="spinner"></div><span>Cargando datos…</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gráfico 2: comparativo entre municipios (viviendas por municipio) -->
+          <div class="card" style="flex: 1; max-height: 460px;">
+            <div class="card-header">
+              <h3>🏘️ Comparativo entre Municipios</h3>
+              <span class="card-badge" id="chart-muni-badge">—</span>
+            </div>
+            <div class="card-body">
+              <div class="chart-wrap" id="chart-muni-container">
+                <div class="loading-state"><div class="spinner"></div><span>Cargando datos…</span></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ══════════════════════════
+           PÁGINA 3 — Contenedores
+      ══════════════════════════ -->
+      <div class="page" id="page-2">
+        <div style="display: flex; flex-direction: column; gap: 14px; height: calc(100% - 14px);">
+
+          <!-- Gráfico 1: grupos de recipientes (cols BI, BJ, BK, BL, BM) -->
+          <div class="card" style="flex: 1; max-height: 460px;">
+            <div class="card-header">
+              <h3>🪣 Grupos de Recipientes</h3>
+              <span class="card-badge" id="chart-grupos-badge">—</span>
+            </div>
+            <div class="card-body">
+              <div class="chart-wrap" id="chart-grupos-container">
+                <div class="loading-state"><div class="spinner"></div><span>Cargando datos…</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gráfico 2: tratamiento de recipientes (cols AR, AS, AT, AU) -->
+          <div class="card" style="flex: 1; max-height: 460px;">
+            <div class="card-header">
+              <h3>🧪 Tratamiento de Recipientes</h3>
+              <span class="card-badge" id="chart-tratam-badge">—</span>
+            </div>
+            <div class="card-body">
+              <div class="chart-wrap" id="chart-tratam-container" style="display:flex; justify-content:center; align-items:center;">
                 <div class="loading-state"><div class="spinner"></div><span>Cargando datos…</span></div>
               </div>
             </div>
@@ -735,8 +820,18 @@ const COL_LETRAS = {
   COORD_MZ:     'H',   // coordenadas de la manzana (lat, lng)
   FECHA:        'C',   // fecha del registro
   VIVIENDAS:    'B',   // cantidad de viviendas del registro
-  FILTRO_BN:    'BN'   // filtro adicional
+  FILTRO_BN:    'BN',  // filtro adicional
+  ORDEN_SEMANA: 'BG'   // clave de orden ascendente para el gráfico semanal
 };
+
+// Columnas para el gráfico de barras "Grupos de recipientes" (página Contenedores).
+// Cada barra = suma total de la columna sobre los datos filtrados.
+// El label de cada barra sale del encabezado real de la planilla (headers).
+const COLS_GRUPOS_RECIPIENTES = ['BI', 'BJ', 'BK', 'BL', 'BM'];
+
+// Columnas para el gráfico de torta "Tratamiento de recipientes" (página Contenedores).
+// Cada segmento = suma total de la columna sobre los datos filtrados.
+const COLS_TRATAMIENTO_RECIPIENTES = ['AR', 'AS', 'AT', 'AU'];
 
 // Etiqueta visible del filtro BN (cambiar por el nombre real del encabezado)
 const FILTRO_BN_LABEL = 'Recipiente (+)';
@@ -795,7 +890,7 @@ let kmlLayer    = null;
 let puntosLayer = null;   // capa de puntos de manzanas
 let mapView     = 'ambos';  // 'poligonos' | 'puntos' | 'ambos'
 let mapFitted   = false;    // encuadre inicial ya realizado
-let pageCount   = 2;
+let pageCount   = 3;
 
 /* Cambia la vista del mapa y re-renderiza las capas */
 function setMapView(view) {
@@ -879,9 +974,11 @@ function viviendasDe(r) {
    CARGA DE DATOS
 ═══════════════════════════════════════════════ */
 async function loadData() {
+  const spinnerHTML = '<div class="loading-state"><div class="spinner"></div><span>Cargando datos…</span></div>';
   // Mostrar spinners
-  document.getElementById('tabla-container').innerHTML = '<div class="loading-state"><div class="spinner"></div><span>Cargando datos…</span></div>';
-  document.getElementById('chart-container').innerHTML  = '<div class="loading-state"><div class="spinner"></div><span>Cargando datos…</span></div>';
+  document.getElementById('tabla-container').innerHTML = spinnerHTML;
+  ['chart-semanal-container','chart-muni-container','chart-grupos-container','chart-tratam-container']
+    .forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = spinnerHTML; });
   document.getElementById('kpi-total').textContent    = '—';
   document.getElementById('kpi-barrios').textContent  = '—';
   document.getElementById('kpi-manzanas').textContent = '—';
@@ -902,7 +999,8 @@ async function loadData() {
     console.error(e);
     const err = `<div class="error-state">⚠️ Error al cargar datos.<br><small>${e.message}</small></div>`;
     document.getElementById('tabla-container').innerHTML = err;
-    document.getElementById('chart-container').innerHTML  = err;
+    ['chart-semanal-container','chart-muni-container','chart-grupos-container','chart-tratam-container']
+      .forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = err; });
   }
 }
 
@@ -950,7 +1048,10 @@ async function applyFilters() {
 
   renderKPIs();
   renderTabla();
-  renderChart();
+  renderChartSemanal();          // Página Evolución Temporal, gráfico 1
+  renderChartMunicipios();       // Página Evolución Temporal, gráfico 2
+  renderChartGruposRecipientes();// Página Contenedores, gráfico 1
+  renderChartTratamientos();     // Página Contenedores, gráfico 2
   await renderMapa();
   flyToFilter();
 }
@@ -1059,46 +1160,39 @@ function renderTabla() {
 }
 
 /* ═══════════════════════════════════════════════
-   GRÁFICO DE BARRAS — Casos por SE
+   GRÁFICOS — helper compartido de barras
+   Recibe un array de entries [label, value] ya ordenado y las pinta
+   como barras SVG en el container indicado. Devuelve el nro de entries.
+   Opciones: rotarLabels (true por defecto), colores alternos, formato de tooltip.
 ═══════════════════════════════════════════════ */
-function renderChart() {
-  const map = {};
-  filtData.forEach(r => {
-    const se = col(r, COL_LETRAS.SEMANA);
-    if (!se && se !== 0) return;
-    const k = String(se).padStart(2, '0');
-    if (!map[k]) map[k] = 0;
-    map[k]++;
-  });
+function buildBarChartSVG(containerId, entries, opts = {}) {
+  const {
+    rotarLabels = true,
+    barW        = 32,
+    color1      = '#90B4E1',
+    color2      = '#F4492E',
+    alternar    = false,
+    labelColor1 = '#4A77B5',
+    tooltipFmt  = (l, v) => `${l}: ${v}`
+  } = opts;
 
-  const entries = Object.entries(map).sort((a, b) => a[0].localeCompare(b[0]));
+  const cont = document.getElementById(containerId);
+  if (!cont) return 0;
 
   if (!entries.length) {
-    document.getElementById('chart-container').innerHTML =
-      '<div class="error-state">Sin datos para graficar con los filtros seleccionados.</div>';
-    return;
+    cont.innerHTML = '<div class="error-state">Sin datos para graficar con los filtros seleccionados.</div>';
+    return 0;
   }
 
   const vals   = entries.map(e => e[1]);
-  const labels = entries.map(e => 'SE ' + e[0]);
-  const maxV   = Math.max(...vals);
-  const BAR_W  = 32, GAP = 6, PAD_L = 44, PAD_R = 16, PAD_TOP = 24, PAD_BOT = 36;
-  const H      = 220;
-  const W      = PAD_L + entries.length * (BAR_W + GAP) + PAD_R;
-
-  document.getElementById('chart-badge').textContent = `${entries.length} semanas`;
-
-  // Escala
+  const labels = entries.map(e => e[0]);
+  const maxV   = Math.max(...vals) || 1;
+  const GAP = 6, PAD_L = 44, PAD_R = 16, PAD_TOP = 24, PAD_BOT = rotarLabels ? 60 : 36;
+  const H = 260;
+  const W = PAD_L + entries.length * (barW + GAP) + PAD_R;
   const yScale = v => PAD_TOP + (H - PAD_TOP - PAD_BOT) * (1 - v / maxV);
 
-  // Colores de la paleta institucional
-  const BAR_COLOR  = '#90B4E1';   // celeste
-  const BAR_COLOR2 = '#F4492E';   // rojo (alternancia opcional)
-  const hasTwo = document.getElementById('filtro-temporada').value === '';
-
   let bars = '', xLabels = '', yLines = '';
-
-  // Y grid lines
   const yTicks = 4;
   for (let i = 0; i <= yTicks; i++) {
     const v  = Math.round((maxV / yTicks) * i);
@@ -1107,25 +1201,203 @@ function renderChart() {
     yLines += `<text x="${PAD_L - 4}" y="${yy + 4}" text-anchor="end" font-size="9" fill="#90A4AE">${v}</text>`;
   }
 
-  entries.forEach(([se, cnt], i) => {
-    const x  = PAD_L + i * (BAR_W + GAP);
+  entries.forEach(([lab, cnt], i) => {
+    const x  = PAD_L + i * (barW + GAP);
     const y  = yScale(cnt);
     const bh = H - PAD_BOT - y;
-    const color = (i % 2 === 0 || !hasTwo) ? BAR_COLOR : BAR_COLOR2;
-
-    bars += `<rect x="${x}" y="${y}" width="${BAR_W}" height="${bh}" fill="${color}" rx="3" opacity=".9">
-      <title>SE ${se}: ${cnt} registros</title>
+    const color = (alternar && i % 2 === 1) ? color2 : color1;
+    bars += `<rect x="${x}" y="${y}" width="${barW}" height="${bh}" fill="${color}" rx="3" opacity=".9">
+      <title>${tooltipFmt(lab, cnt)}</title>
     </rect>`;
-    const labelColor = (color === '#90B4E1') ? '#4A77B5' : color;
-    bars += `<text x="${x + BAR_W/2}" y="${y - 4}" text-anchor="middle" font-size="9" font-weight="700" fill="${labelColor}">${cnt}</text>`;
-    xLabels += `<text x="${x + BAR_W/2}" y="${H - PAD_BOT + 14}" text-anchor="middle" font-size="8.5" fill="#78909C" transform="rotate(-40 ${x + BAR_W/2} ${H - PAD_BOT + 14})">${labels[i]}</text>`;
+    const labColor = (color === color1) ? labelColor1 : color;
+    bars += `<text x="${x + barW/2}" y="${y - 4}" text-anchor="middle" font-size="9" font-weight="700" fill="${labColor}">${cnt}</text>`;
+    if (rotarLabels) {
+      xLabels += `<text x="${x + barW/2}" y="${H - PAD_BOT + 14}" text-anchor="end" font-size="8.5" fill="#78909C" transform="rotate(-40 ${x + barW/2} ${H - PAD_BOT + 14})">${lab}</text>`;
+    } else {
+      xLabels += `<text x="${x + barW/2}" y="${H - PAD_BOT + 14}" text-anchor="middle" font-size="8.5" fill="#78909C">${lab}</text>`;
+    }
   });
 
-  document.getElementById('chart-container').innerHTML = `
+  cont.innerHTML = `
     <svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="display:block; min-width:${W}px; font-family:Barlow,sans-serif">
       <line x1="${PAD_L}" x2="${PAD_L}" y1="${PAD_TOP}" y2="${H - PAD_BOT}" stroke="#DDE3EC" stroke-width="1"/>
       ${yLines}${bars}${xLabels}
     </svg>`;
+  return entries.length;
+}
+
+/* ═══════════════════════════════════════════════
+   Página Evolución Temporal — Gráfico 1
+   Barras semanal: viviendas (col B) por SE (col AP), ordenado asc por col BG
+═══════════════════════════════════════════════ */
+function renderChartSemanal() {
+  const acc = {};  // { SE: { viv: n, orden: minBG } }
+  filtData.forEach(r => {
+    const se = col(r, COL_LETRAS.SEMANA);
+    if (se === undefined || se === null || se === '') return;
+    const k = String(se).padStart(2, '0');
+    const viv = parseFloat(col(r, COL_LETRAS.VIVIENDAS)) || 0;
+    const ord = col(r, COL_LETRAS.ORDEN_SEMANA);
+    if (!acc[k]) acc[k] = { viv: 0, orden: ord };
+    acc[k].viv += viv;
+    // Guardamos el menor valor de BG del grupo para ordenar
+    if (ord !== undefined && ord !== null && ord !== '') {
+      if (acc[k].orden === undefined || acc[k].orden === null || acc[k].orden === '' || cmpOrden(ord, acc[k].orden) < 0) {
+        acc[k].orden = ord;
+      }
+    }
+  });
+
+  // Orden ascendente por BG. Comparación numérica si son números, si no lexicográfica.
+  const entries = Object.entries(acc)
+    .sort((a, b) => cmpOrden(a[1].orden, b[1].orden))
+    .map(([k, o]) => ['SE ' + k, Math.round(o.viv)]);
+
+  const n = buildBarChartSVG('chart-semanal-container', entries, {
+    alternar: document.getElementById('filtro-temporada').value === '',
+    tooltipFmt: (l, v) => `${l}: ${v} viviendas`
+  });
+  document.getElementById('chart-semanal-badge').textContent = n ? `${n} semanas` : '—';
+}
+
+// Comparador de valores de orden (BG). Numérico si ambos parsean como número,
+// si no cae a Date, y como último recurso a string.
+function cmpOrden(a, b) {
+  if (a === b) return 0;
+  if (a === undefined || a === null || a === '') return 1;
+  if (b === undefined || b === null || b === '') return -1;
+  const na = parseFloat(a), nb = parseFloat(b);
+  if (!isNaN(na) && !isNaN(nb)) return na - nb;
+  const da = new Date(a).getTime(), db = new Date(b).getTime();
+  if (!isNaN(da) && !isNaN(db)) return da - db;
+  return String(a).localeCompare(String(b));
+}
+
+/* ═══════════════════════════════════════════════
+   Página Evolución Temporal — Gráfico 2
+   Comparativo entre municipios: viviendas (col B) por municipio (col E)
+═══════════════════════════════════════════════ */
+function renderChartMunicipios() {
+  const acc = {};
+  filtData.forEach(r => {
+    const m = col(r, COL_LETRAS.MUNICIPIO);
+    if (!m) return;
+    const viv = parseFloat(col(r, COL_LETRAS.VIVIENDAS)) || 0;
+    acc[m] = (acc[m] || 0) + viv;
+  });
+  // Orden desc por total (comparativo más útil visualmente)
+  const entries = Object.entries(acc)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => [k, Math.round(v)]);
+
+  const n = buildBarChartSVG('chart-muni-container', entries, {
+    barW: 40,
+    color1: '#F4492E',
+    labelColor1: '#B33520',
+    tooltipFmt: (l, v) => `${l}: ${v} viviendas`
+  });
+  document.getElementById('chart-muni-badge').textContent = n ? `${n} municipios` : '—';
+}
+
+/* ═══════════════════════════════════════════════
+   Página Contenedores — Gráfico 1
+   Barras: suma total de cada columna en COLS_GRUPOS_RECIPIENTES.
+   Los labels salen del encabezado real de la planilla (headers).
+═══════════════════════════════════════════════ */
+function renderChartGruposRecipientes() {
+  const entries = COLS_GRUPOS_RECIPIENTES.map(letra => {
+    let total = 0;
+    filtData.forEach(r => {
+      const v = parseFloat(col(r, letra));
+      if (!isNaN(v)) total += v;
+    });
+    const label = (headers[colIdx(letra)] || `Col ${letra}`).toString().trim();
+    return [label, Math.round(total)];
+  });
+
+  const n = buildBarChartSVG('chart-grupos-container', entries, {
+    rotarLabels: false,
+    barW: 60,
+    color1: '#F4B942',
+    labelColor1: '#8A6708',
+    tooltipFmt: (l, v) => `${l}: ${v}`
+  });
+  document.getElementById('chart-grupos-badge').textContent = n ? `${n} grupos` : '—';
+}
+
+/* ═══════════════════════════════════════════════
+   Página Contenedores — Gráfico 2
+   Torta: suma total de cada columna en COLS_TRATAMIENTO_RECIPIENTES.
+═══════════════════════════════════════════════ */
+function renderChartTratamientos() {
+  const raw = COLS_TRATAMIENTO_RECIPIENTES.map(letra => {
+    let total = 0;
+    filtData.forEach(r => {
+      const v = parseFloat(col(r, letra));
+      if (!isNaN(v)) total += v;
+    });
+    const label = (headers[colIdx(letra)] || `Col ${letra}`).toString().trim();
+    return { label, value: Math.round(total) };
+  });
+
+  const totalSum = raw.reduce((s, e) => s + e.value, 0);
+  const cont = document.getElementById('chart-tratam-container');
+  if (!cont) return;
+
+  if (totalSum <= 0) {
+    cont.innerHTML = '<div class="error-state">Sin datos para graficar con los filtros seleccionados.</div>';
+    document.getElementById('chart-tratam-badge').textContent = '—';
+    return;
+  }
+
+  // Paleta institucional para la torta
+  const paleta = ['#90B4E1', '#F4492E', '#8BC34A', '#F4B942', '#B39DDB', '#4DB6AC'];
+
+  const cx = 170, cy = 150, r = 110;
+  let acumAng = -Math.PI / 2;   // arranca desde arriba
+  let paths = '', labels = '';
+  const legend = [];
+
+  raw.forEach((e, i) => {
+    if (e.value <= 0) { legend.push({...e, color: paleta[i % paleta.length], pct: 0}); return; }
+    const frac = e.value / totalSum;
+    const ang  = frac * Math.PI * 2;
+    const x1 = cx + r * Math.cos(acumAng);
+    const y1 = cy + r * Math.sin(acumAng);
+    const x2 = cx + r * Math.cos(acumAng + ang);
+    const y2 = cy + r * Math.sin(acumAng + ang);
+    const largeArc = ang > Math.PI ? 1 : 0;
+    const color = paleta[i % paleta.length];
+    paths += `<path d="M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z"
+                fill="${color}" opacity=".9" stroke="#fff" stroke-width="2">
+                <title>${e.label}: ${e.value} (${(frac*100).toFixed(1)}%)</title>
+              </path>`;
+    // etiqueta de porcentaje sobre el sector (solo si >= 4%)
+    if (frac >= 0.04) {
+      const midAng = acumAng + ang / 2;
+      const lx = cx + (r * 0.65) * Math.cos(midAng);
+      const ly = cy + (r * 0.65) * Math.sin(midAng);
+      labels += `<text x="${lx}" y="${ly}" text-anchor="middle" font-size="12" font-weight="800" fill="#fff">${(frac*100).toFixed(0)}%</text>`;
+    }
+    legend.push({...e, color, pct: frac * 100});
+    acumAng += ang;
+  });
+
+  const legendHTML = legend.map(l => `
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:12px;">
+      <span style="display:inline-block; width:14px; height:14px; background:${l.color}; border-radius:3px; flex-shrink:0;"></span>
+      <span style="font-weight:600; color:#333;">${l.label}</span>
+      <span style="color:#78909C; margin-left:auto; font-variant-numeric:tabular-nums;">${l.value} (${l.pct.toFixed(1)}%)</span>
+    </div>`).join('');
+
+  cont.innerHTML = `
+    <div style="display:flex; align-items:center; gap:24px; flex-wrap:wrap; justify-content:center; padding:10px 20px;">
+      <svg width="340" height="300" xmlns="http://www.w3.org/2000/svg" style="font-family:Barlow,sans-serif; flex-shrink:0;">
+        ${paths}${labels}
+      </svg>
+      <div style="min-width:220px; max-width:320px;">${legendHTML}</div>
+    </div>`;
+  document.getElementById('chart-tratam-badge').textContent = `Total: ${totalSum}`;
 }
 
 /* ═══════════════════════════════════════════════
@@ -1370,7 +1642,7 @@ function parseCoordString(txt) {
 /* ═══════════════════════════════════════════════
    NAVEGACIÓN ENTRE PÁGINAS
 ═══════════════════════════════════════════════ */
-const PAGE_TITLES = ['Distribución Espacial', 'Evolución Temporal'];
+const PAGE_TITLES = ['Distribución Espacial', 'Evolución Temporal', 'Contenedores'];
 
 function switchPage(idx) {
   // Desactivar todas las páginas y nav items
@@ -1664,6 +1936,8 @@ window.GEOJSON_MUNICIPIOS = {
   "Virasoro": "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",
   "Yatayti_Calle": "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",
 };
+
+
 
 /* Bounds/centros por municipio (del GeoJSON) */
 window.GEOJSON_BOUNDS = {"Bella_Vista": {"center": [-28.51473, -59.04535], "sw": [-28.53199, -59.05757], "ne": [-28.48807, -59.02674]}, "Curuzú_Cuatiá": {"center": [-29.78836, -58.06521], "sw": [-29.80807, -58.09493], "ne": [-29.77313, -58.03514]}, "Empedrado": {"center": [-27.95157, -58.80754], "sw": [-27.96664, -58.82047], "ne": [-27.93564, -58.78525]}, "Goya": {"center": [-29.15017, -59.25945], "sw": [-29.17501, -59.28431], "ne": [-29.10762, -59.22407]}, "Mercedes": {"center": [-29.18319, -58.0749], "sw": [-29.20915, -58.11068], "ne": [-29.16341, -58.02905]}, "Monte_Caseros": {"center": [-30.25129, -57.64269], "sw": [-30.26608, -57.66027], "ne": [-30.23913, -57.62163]}, "Paso_De_La_Patria": {"center": [-27.32038, -58.57687], "sw": [-27.34966, -58.60676], "ne": [-27.30289, -58.53565]}, "Paso_De_Los_Libres": {"center": [-29.71245, -57.10853], "sw": [-29.72716, -57.1325], "ne": [-29.69884, -57.07503]}, "Riachuelo": {"center": [-27.59038, -58.73904], "sw": [-27.64038, -58.78122], "ne": [-27.54752, -58.68975]}, "San_Roque": {"center": [-28.57637, -58.70985], "sw": [-28.58953, -58.72191], "ne": [-28.56536, -58.69568]}, "Santo_Tomé": {"center": [-28.55798, -56.04213], "sw": [-28.57214, -56.05521], "ne": [-28.53644, -56.01723]}, "Virasoro": {"center": [-28.05292, -56.02254], "sw": [-28.06526, -56.04415], "ne": [-28.03679, -56.00568]}, "Yatayti_Calle": {"center": [-29.02462, -58.9148], "sw": [-29.03908, -58.92802], "ne": [-29.0048, -58.9005]}};
